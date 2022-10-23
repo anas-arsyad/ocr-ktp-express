@@ -4,7 +4,7 @@ This is an example OCR server built with [tesseract.js](https://github.com/napth
 
 ## Demo
 
-Upload an image at https://tesseract-express.herokuapp.com and wait for the results.
+<!-- Upload an image at https://tesseract-express.herokuapp.com and wait for the results. -->
 
 ## Develop locally
 
