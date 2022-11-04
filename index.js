@@ -24,29 +24,17 @@ let middleware = async (req, res, next) => {
     let fileName = "ktp." + fileExt
     const image = await jimp.read(sampleFile.data)
     const imageNik = await jimp.read(sampleFile.data)
-    await image.resize(1500 || image.bitmap.width, 767 || image.bitmap.height)
-    await imageNik.resize(
-      1500 || image.bitmap.width,
-      767 || image.bitmap.height
-    )
 
-    await image.crop(300, 180, 730, 500)
-    await imageNik.crop(260, 110, 770, 95)
+    image.resize(1500 || image.bitmap.width, 767 || image.bitmap.height)
+    imageNik.resize(1500 || image.bitmap.width, 767 || image.bitmap.height)
 
-    // await image.gaussian(1)
-    await imageNik.gaussian(1)
+    image.crop(300, 180, 730, 500)
+    imageNik.crop(260, 110, 770, 95)
 
-    // await imageNik.invert()
-    // await image.invert()
+    imageNik.gaussian(1)
 
-    // await image.color([
-    // {apply: 'desaturate', params: [100]},
-    // { apply: "lighten", params: [2] },
-    // { apply: "brighten", params: [0] },
-    // ])
-
-    await image.threshold({ max: 120 })
-    await imageNik.threshold({ max: 120 })
+    image.threshold({ max: 120 })
+    imageNik.threshold({ max: 120 })
 
     let resultDataBuffer = await image.getBufferAsync(jimp.MIME_PNG)
     let resultDataBufferNik = await imageNik.getBufferAsync(jimp.MIME_PNG)
@@ -54,8 +42,10 @@ let middleware = async (req, res, next) => {
     req.files.sampleFile.data = resultDataBuffer
     req.files.sampleFile.dataNik = resultDataBufferNik
 
-    await image.write(fileName)
-    await imageNik.write('ktpNik.'+fileExt)
+    /* CREATE IMAGE */
+    // image.write(fileName)
+    // imageNik.write("ktpNik." + fileExt)
+
     next()
   } catch (error) {
     console.log("[MIDDLEWARE]", error)
@@ -67,7 +57,7 @@ app.post("/upload", middleware, async (req, res) => {
   try {
     const worker = tesseract.createWorker({})
     const workerNik = tesseract.createWorker({})
-    console.log('Proses OCR .....')
+    console.log("Proses OCR .....")
     await worker.load()
     await workerNik.load()
 
@@ -87,8 +77,7 @@ app.post("/upload", middleware, async (req, res) => {
     const { data: dataNik } = await workerNik.recognize(sampleFile.dataNik)
     let arr = data.text.split("\n")
     arr = arr.filter((item) => item)
-    console.log(arr)
-    console.log("[NIK]", dataNik.text)
+
     let obj = {}
     let nik = dataNik.text.replace(/[^0-9. ]/g, "").split(" ")
     let resultNik = nik[1] || nik[0]
@@ -96,17 +85,17 @@ app.post("/upload", middleware, async (req, res) => {
       resultNik += nik[2]
     }
     obj.nik = resultNik
-    if(arr.length<12){
+    if (arr.length < 12) {
       return res.status(400).send({
-        message:'IMAGE_INVALID'
+        message: "IMAGE_INVALID",
       })
     }
-    if(arr.length!==12) arr.shift()
+    if (arr.length !== 12) arr.shift()
     arr.forEach((item, idx) => {
-      item=item.replaceAll(':','')
+      item = item.replaceAll(":", "")
       if (idx === 0) obj.name = item.replace(/[^a-zA-Z ]/g, "")
       if (idx === 1) {
-        let splitedArr = item.split(" ").filter(item=>item?true:false)
+        let splitedArr = item.split(" ").filter((item) => (item ? true : false))
         obj.birthPlace = splitedArr[1]
         let numberOnly = item.replace(/[^0-9.]/g, "").split("")
         let birthDate = ""
@@ -122,7 +111,7 @@ app.post("/upload", middleware, async (req, res) => {
       }
       if (idx === 3) {
         let alphaOnly = item.replace(/[^a-zA-Z ]/g, "")
-        obj.address = item||alphaOnly
+        obj.address = item || alphaOnly
       }
       if (idx === 4) {
         let numberOnly = item.replace(/[^0-9.]/g, "")
@@ -138,17 +127,27 @@ app.post("/upload", middleware, async (req, res) => {
           9: "job",
           10: "nationality",
         }
-        let splittedString = item.split(" ").filter(item=>item?true:false)
+        let splittedString = item
+          .split(" ")
+          .filter((item) => (item ? true : false))
         if ([0, 1].includes(splittedString.length)) {
           obj[mapKey[idx]] = item
         } else {
           let value
-          if([5,6].includes(idx)){
-            value = splittedString[0].length>=4?splittedString[0]:splittedString[1]
-            if (splittedString?.[1]?.length >= 4&&value!==splittedString[1]) value += " " + splittedString[1]
-          }else{
-            value = splittedString[1].length>=3?splittedString[1]:splittedString[0]
-            if (splittedString?.[2]?.length >= 4) value += " " + splittedString[2]
+          if ([5, 6].includes(idx)) {
+            value =
+              splittedString[0].length >= 4
+                ? splittedString[0]
+                : splittedString[1]
+            if (splittedString?.[1]?.length >= 4 && value !== splittedString[1])
+              value += " " + splittedString[1]
+          } else {
+            value =
+              splittedString[1].length >= 3
+                ? splittedString[1]
+                : splittedString[0]
+            if (splittedString?.[2]?.length >= 4)
+              value += " " + splittedString[2]
           }
           obj[mapKey[idx]] = value
         }
@@ -156,8 +155,8 @@ app.post("/upload", middleware, async (req, res) => {
     })
     await worker.terminate()
     await workerNik.terminate()
-    // fs.unlinkSync(fileName)
-    console.log('==== Ekstrack Sukses ====')
+
+    console.log("==== Ekstrack Sukses ====")
     res.status(200).send(obj)
   } catch (error) {
     throw error
